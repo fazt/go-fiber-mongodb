@@ -1,6 +1,7 @@
-@api = http://localhost:4000
+@api = http://localhost:3000
+@id = 638704a3d4a4d6e94eb9d774
 
-### Create a user
+### Create a new user
 POST {{api}}/users
 Content-Type: application/json
 
@@ -10,11 +11,21 @@ Content-Type: application/json
     "title": "engineer"
 }
 
-### Get a user
-GET {{api}}/users/62ec76dbde5ac990a2e19bb2
-
 ### Get all users
 GET {{api}}/users
 
+### Get a user
+GET {{api}}/users/{{id}}
+
 ### Delete a user
-DELETE {{api}}/users/62ec71e917b67f5b03139f46
+DELETE {{api}}/users/{{id}}
+
+### Update a user
+PATCH {{api}}/users/{{id}}
+Content-Type: application/json
+
+{
+    "name": "Joe",
+    "location": "california",
+    "title": "CEO"
+}

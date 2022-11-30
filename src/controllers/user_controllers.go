@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/faztweb/go-fiber-mongodb/config"
-	"github.com/faztweb/go-fiber-mongodb/models"
-	"github.com/faztweb/go-fiber-mongodb/responses"
+	"github.com/faztweb/go-fiber-mongodb/src/config"
+	"github.com/faztweb/go-fiber-mongodb/src/models"
+	"github.com/faztweb/go-fiber-mongodb/src/responses"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
@@ -18,7 +18,6 @@ var userCollection *mongo.Collection = config.GetCollection(config.DB, "users")
 var validate = validator.New()
 
 func CreateUser(c *fiber.Ctx) error {
-
 	var user models.User
 
 	if err := c.BodyParser(&user); err != nil {
@@ -71,6 +70,13 @@ func GetUser(c *fiber.Ctx) error {
 	err := userCollection.FindOne(context.TODO(), bson.D{{Key: "_id", Value: objectId}}).Decode(&user)
 
 	if err != nil {
+
+		if err == mongo.ErrNoDocuments {
+			return c.Status(http.StatusNotFound).JSON(
+				responses.UserResponse{Status: http.StatusNotFound, Message: "error", Data: &fiber.Map{"data": "User with specified ID not found!"}},
+			)
+		}
+
 		return c.Status(http.StatusInternalServerError).JSON(responses.UserResponse{
 			Status:  http.StatusInternalServerError,
 			Message: "Interal server error",
@@ -104,6 +110,16 @@ func GetUsers(c *fiber.Ctx) error {
 		users = append(users, user)
 	}
 
+	if len(users) == 0 {
+		return c.Status(http.StatusNotFound).JSON(responses.UserResponse{
+			Status:  http.StatusNotFound,
+			Message: "error",
+			Data: &fiber.Map{
+				"data": []models.User{},
+			},
+		})
+	}
+
 	return c.Status(http.StatusOK).JSON(responses.UserResponse{
 		Status:  http.StatusOK,
 		Message: "Success",
@@ -129,5 +145,41 @@ func DeleteUser(c *fiber.Ctx) error {
 
 	return c.Status(http.StatusOK).JSON(
 		responses.UserResponse{Status: http.StatusOK, Message: "success", Data: &fiber.Map{"data": "User successfully deleted!"}},
+	)
+}
+
+func UpdateUser(c *fiber.Ctx) error {
+	userId := c.Params("userId")
+
+	var user models.User
+
+	if err := c.BodyParser(&user); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(responses.UserResponse{Status: http.StatusBadRequest, Message: "error", Data: &fiber.Map{"data": err.Error()}})
+	}
+
+	if validationErr := validate.Struct(&user); validationErr != nil {
+		return c.Status(http.StatusBadRequest).JSON(responses.UserResponse{
+			Status:  http.StatusBadRequest,
+			Message: "error",
+			Data:    &fiber.Map{"data": validationErr.Error()},
+		})
+	}
+
+	objId, _ := primitive.ObjectIDFromHex(userId)
+
+	result, err := userCollection.UpdateOne(context.TODO(), bson.D{{Key: "_id", Value: objId}}, bson.D{{Key: "$set", Value: user}})
+
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(responses.UserResponse{Status: http.StatusInternalServerError, Message: "error", Data: &fiber.Map{"data": err.Error()}})
+	}
+
+	if result.ModifiedCount < 1 {
+		return c.Status(http.StatusNotFound).JSON(
+			responses.UserResponse{Status: http.StatusNotFound, Message: "error", Data: &fiber.Map{"data": "User with specified ID not found!"}},
+		)
+	}
+
+	return c.Status(http.StatusOK).JSON(
+		responses.UserResponse{Status: http.StatusOK, Message: "success", Data: &fiber.Map{"data": "User successfully updated!"}},
 	)
 }

@@ -1,1 +1,5 @@
+# environment variables
 .env
+
+# air tmp files
+tmp

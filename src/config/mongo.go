@@ -12,6 +12,10 @@ import (
 func ConnectDB() *mongo.Client {
 	cfg := GetConfig()
 
+	if cfg.MONGODB_URI == "" {
+		log.Fatal("MONGODB_URI is not set")
+	}
+
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.MONGODB_URI))
 
 	if err != nil {
